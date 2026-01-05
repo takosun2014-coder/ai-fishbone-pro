@@ -2,68 +2,78 @@ import streamlit as st
 import google.generativeai as genai
 import json
 
-st.set_page_config(page_title="AI 專業要因分析工具", layout="wide")
-st.title("🛡️ 深度要因分析圖系統 (高穩定版)")
-st.write("本工具由 **AI 應用規劃師 坤生** 監製")
+st.set_page_config(page_title="專業要因分析魚骨圖", layout="wide")
+st.title("🐟 專業級要因分析系統 (標準魚骨佈局)")
+st.write("本工具由 **AI 應用規劃師 坤生** 監製 - 專供 TPS/Lean 專家使用")
 
-# 1. 初始化 API
+# 1. 初始化 (保持不變)
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    # 自動選擇可用模型
     try:
         models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         target_model = 'models/gemini-1.5-flash' if 'models/gemini-1.5-flash' in models else models[0]
         model = genai.GenerativeModel(target_model)
-        st.sidebar.success(f"系統已連線: {target_model}")
     except Exception as e:
-        st.error(f"模型初始化失敗: {e}")
+        st.error(f"系統啟動失敗: {e}")
         st.stop()
 else:
-    st.error("❌ 請在 Secrets 設定 GEMINI_API_KEY")
+    st.error("❌ 請設定 API Key")
     st.stop()
 
-# 2. 輸入與分析
-issue = st.text_input("輸入要分析的事件 (如：長照機構諾羅病毒群聚)", "")
+# 2. 分析功能
+issue = st.text_input("請輸入要分析的事件 (例如：長照機構諾羅病毒群聚)", "")
 
-if st.button("🚀 開始深度分析"):
+if st.button("🚀 生成標準魚骨圖"):
     if not issue:
-        st.warning("請輸入內容")
+        st.warning("請輸入主題")
     else:
-        with st.spinner("AI 顧問正在應用 6M 模型進行深度分析..."):
+        with st.spinner("正在進行真因探討..."):
             try:
-                prompt = f"你是一位 TPS 專家。請針對『{issue}』進行 6M 要因分析。請嚴格回傳 JSON 格式：{{'人': {{'二次要因A': ['三次要因A1', '三次要因A2']}}}}。不要說廢話。"
+                prompt = f"你是一位專家。請針對『{issue}』進行 6M 要因分析。嚴格回傳 JSON：{{'人': {{'原因': ['細節']}}}}"
                 response = model.generate_content(prompt)
-                
                 raw_text = response.text.strip().replace("```json", "").replace("```", "")
                 data = json.loads(raw_text)
                 
-                # 3. 繪製圖表 (使用 Graphviz 引擎)
-                st.subheader("魚骨圖結構分析")
-                
-                # 構建 Graphviz 代碼
+                # 3. 繪製「標準魚骨佈局」
+                # 將 6M 分成上下兩組，模擬魚骨張開的樣子
+                m6_keys = list(data.keys())
+                top_group = m6_keys[:3]    # 前三個放上面
+                bottom_group = m6_keys[3:] # 後三個放下面
+
                 dot_code = 'digraph G {\n'
-                dot_code += '  rankdir=LR;\n' # 從左到右
-                dot_code += '  node [fontname="Microsoft JhengHei", shape=box, style=filled, fillcolor="lightblue"];\n'
-                dot_code += f'  "核心問題\\n({issue})" [shape=ellipse, fillcolor="orange"];\n'
+                dot_code += '  rankdir=LR; splines=line;\n'
+                dot_code += '  node [fontname="Microsoft JhengHei", style=filled];\n'
                 
-                for m6, seconds in data.items():
-                    # 6M 大類
-                    dot_code += f'  "{m6}" -> "核心問題\\n({issue})";\n'
-                    for second, thirds in seconds.items():
-                        # 二次要因
-                        dot_code += f'  "{second}" -> "{m6}";\n'
+                # 主脊椎核心問題 (魚頭)
+                dot_code += f'  "SPINE_HEAD" [label="{issue}", shape=ellipse, fillcolor="orange", width=2];\n'
+                
+                # 繪製上方大骨
+                for m in top_group:
+                    dot_code += f'  "{m}" [shape=plaintext, fontcolor="red", fontsize=16, fontweight="bold"];\n'
+                    dot_code += f'  "{m}" -> "SPINE_HEAD" [penwidth=3, color="gray"];\n'
+                    for second, thirds in data[m].items():
+                        dot_code += f'  "{second}" [shape=none, fontsize=12];\n'
+                        dot_code += f'  "{second}" -> "{m}";\n'
                         for third in thirds:
-                            # 三次要因 (真因)
-                            dot_code += f'  "{third}" -> "{second}";\n'
-                
+                            dot_code += f'  "{third}" [shape=none, fontsize=10, fontcolor="#555555"];\n'
+                            dot_code += f'  "{third}" -> "{second}" [arrowhead=none, style=dotted];\n'
+
+                # 繪製下方大骨
+                for m in bottom_group:
+                    dot_code += f'  "{m}" [shape=plaintext, fontcolor="red", fontsize=16, fontweight="bold"];\n'
+                    dot_code += f'  "{m}" -> "SPINE_HEAD" [penwidth=3, color="gray"];\n'
+                    for second, thirds in data[m].items():
+                        dot_code += f'  "{second}" [shape=none, fontsize=12];\n'
+                        dot_code += f'  "{second}" -> "{m}";\n'
+                        for third in thirds:
+                            dot_code += f'  "{third}" [shape=none, fontsize=10, fontcolor="#555555"];\n'
+                            dot_code += f'  "{third}" -> "{second}" [arrowhead=none, style=dotted];\n'
+
                 dot_code += '}'
                 
-                # 強制顯示圖表
                 st.graphviz_chart(dot_code)
-                
                 st.write("---")
-                st.subheader("詳細數據清單")
                 st.json(data)
 
             except Exception as e:
-                st.error(f"分析失敗，建議稍後再試。錯誤訊息：{e}")
+                st.error(f"分析失敗: {e}")
