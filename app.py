@@ -10,7 +10,7 @@ st.write("本工具由 **AI 應用規劃師 坤生** 監製，專為 TPS/Lean �
 # 讀取 API Key (這部分等一下會在 Streamlit Cloud 設定)
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-pro')
 else:
     st.error("⚠️ 尚未偵測到 API 金鑰，請在 Streamlit Secrets 中設定 GEMINI_API_KEY")
 
